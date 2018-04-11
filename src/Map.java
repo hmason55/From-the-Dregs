@@ -13,12 +13,14 @@ public class Map
       {
          for(int x = 0; x < width; x++)
          {
-            tiles[x][y] = new Tile();
+            tiles[x][y] = new Tile(x, y);
          } 
       }
       
       
-      tiles[0][5].setUnit(new Unit());
+      Unit bat = new Unit("Bat", false);
+      tiles[1][3].setUnit(bat);
+      bat.moveTo(tiles[1][3]);
       
       if(tiles[0][0].getUnit() != null)
       {

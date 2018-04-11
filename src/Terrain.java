@@ -15,10 +15,25 @@ public class Terrain
    
    public static final int MIP_LEVEL = 1;
 
-   public Terrain()
+   public Terrain(boolean isWall, String terrainType)
    {
       //System.out.println("loading");
-      source = new ImageIcon("src/sprites/biomes/dirt_tile.png").getImage();
+      if(isWall)
+      {
+         walkable = false;
+         if(terrainType == "top")
+         { 
+            source = new ImageIcon("src/sprites/biomes/dirt_wall_top.png").getImage();
+         }else if(terrainType == "side")
+         {
+            source = new ImageIcon("src/sprites/biomes/dirt_wall_side.png").getImage();
+         }
+         
+      }else
+      {
+         source = new ImageIcon("src/sprites/biomes/dirt_tile.png").getImage();
+      }
+      
       sprite = source;
       generateMips();
    }

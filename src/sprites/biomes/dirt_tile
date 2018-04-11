@@ -1,0 +1,70 @@
+Tilemancer 0.2.1
+
+Color 56 46 35
+Color 76 63 46
+Color 94 78 57
+PaletteSave1 
+PaletteSave2 
+FileSave1 \Users\Hunter\Documents\GitHub\From-the-Dregs\src\sprites\biomes
+FileSave2 dirt_tile
+Indexed 0
+Size 48
+Camera -229.143 -13.6511
+Node {
+Name perlin_noise.lua
+Position 216.615 239.213
+Parameter 1 -1 -1 0
+Parameter 3 2 -1 0
+Parameter 5 1 -1 0
+Parameter 200 100 -1 0
+Parameter 48 0 100 0
+Parameter 100 0 -1 0
+}
+Node {
+Name lighting.lua
+Position 553.137 41.9884
+Parameter 0 -1 -1 0
+Parameter 0 0 100 0
+Connection 0 2 0
+}
+Node {
+Name blend.lua
+Position 397.777 111.959
+Parameter 0 0 5 0
+Parameter 100 0 100 0
+Connection 0 6 0
+Connection 1 0 0
+}
+Node {
+Name colorizer.lua
+Position 687.199 107.008
+Ramp {
+Point 0 0 0.525506 0
+Point 17 0 0.80333 0.497927
+Point 23 0 0 1
+}
+Parameter 0 0 0 0
+Parameter 0 0 0 0
+Parameter 0 0 1 2
+Connection 0 1 0
+}
+Node {
+Name cells.lua
+Position -72.5398 63.5011
+Parameter 959 -1 -1 0
+Parameter 2 2 -1 0
+Parameter 30 0 100 0
+Parameter 40 0 -1 0
+}
+Node {
+Name invert.lua
+Position 67.4602 90.5011
+Connection 0 4 0
+}
+Node {
+Name directional_blur.lua
+Position 175.545 45.4222
+Parameter 48 -1 -1 0
+Parameter 30 0 100 0
+Connection 0 5 0
+}
