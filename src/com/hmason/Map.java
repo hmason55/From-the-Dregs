@@ -2,12 +2,14 @@ package com.hmason;
 
 public class Map
 {
-   public int width = 20;
-   public int height = 20;
+   private int width;
+   public int height;
    private Tile[][] tiles;
 
-   public Map()
+   public Map(int width, int height)
    {
+      this.width = width;
+      this.height = height;
       tiles = new Tile[width][height];
 
       for (int y = 0; y < height; y++)
@@ -17,16 +19,21 @@ public class Map
             tiles[x][y] = new Tile(x, y);
          }
       }
-
-      if (tiles[0][0].getUnit() != null)
-      {
-         System.out.println("not null");
-      }
    }
 
    public Tile[][] getTiles()
    {
       return tiles;
+   }
+   
+   public int getWidth()
+   {
+      return width;
+   }
+   
+   public int getHeight()
+   {
+      return height;
    }
 
    public void setTile(int x, int y, Tile t)

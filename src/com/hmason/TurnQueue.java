@@ -95,10 +95,10 @@ public class TurnQueue implements Runnable
 
          sortTurns();
 
-         System.out.println("\nNext turn:");
+         //System.out.println("\nNext turn:");
          for (Turn turn : turns)
          {
-            System.out.println(turn.toString());
+            //System.out.println(turn.toString());
          }
 
          if (turns.size() > 0)
@@ -149,7 +149,6 @@ public class TurnQueue implements Runnable
    @Override
    public void run()
    {
-
       try
       {
          while (turns.size() > 0)
@@ -166,7 +165,7 @@ public class TurnQueue implements Runnable
             } else
             {
                // do ai turn stuff
-               Thread.sleep(500);
+               Thread.sleep(50);
                
                
                Unit u = turns.get(0).getUnit();
@@ -174,9 +173,11 @@ public class TurnQueue implements Runnable
                {
                   if(u.isPlayerControlled())
                   {
-                     
+                     // Wait for player input
                   } else {
-                     u.endTurn();
+
+                     u.aiTurn();
+                     
                   }
                }
               
@@ -190,5 +191,27 @@ public class TurnQueue implements Runnable
          // TODO Auto-generated catch block
          e.printStackTrace();
       }
+   }
+   
+   public void clearTurns()
+   {
+      turns.clear();
+   }
+   
+   public String getTurnName()
+   {
+      if(turns == null)
+      {
+         return "";
+      }
+      
+      if(turns.size() > 0 && turns.get(0) != null)
+      {
+         if(turns.get(0).getUnit() != null)
+         {
+            return turns.get(0).getUnit().getName() + "'s turn";
+         }
+      }
+      return "";
    }
 }

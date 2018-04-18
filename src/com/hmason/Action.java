@@ -33,13 +33,13 @@ public class Action
 
       case Crushing_Swing:
          strengthScaling = 2.5f;
-         modifiers.add(new StatusModifier(true, StatusModifier.Type.incrementSpeed, -2, 1));
+         modifiers.add(new StatusModifier(true, StatusModifier.Type.incrementSpeed, -10, 1));
          icon = new ImageIcon(FileLoader.loadImage("sprites/ui/hud/sword_icon.png")).getImage();
          break;
 
       case Defensive_Stance:
          strengthScaling = 0.4f;
-         modifiers.add(new StatusModifier(true, StatusModifier.Type.incrementSpeed, -1, 2));
+         modifiers.add(new StatusModifier(true, StatusModifier.Type.incrementSpeed, -2, 2));
          modifiers.add(new StatusModifier(true, StatusModifier.Type.setBlockStacks, 1, 2));
          icon = new ImageIcon(FileLoader.loadImage("sprites/ui/hud/shield_icon.png")).getImage();
          break;

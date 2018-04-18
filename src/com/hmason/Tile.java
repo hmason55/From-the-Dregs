@@ -1,4 +1,5 @@
 package com.hmason;
+
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.image.ImageObserver;
@@ -30,7 +31,7 @@ public class Tile
       lightStrength = -1;
       lightPassthrough = true;
 
-      if (y == 19 || x == 0 || x == 19)
+      if (y == Viewport.MAP_HEIGHT - 1 || x == 0 || x == Viewport.MAP_WIDTH - 1)
       {
          terrain = new Terrain(true, "top", this);
       } else if (y == 0)

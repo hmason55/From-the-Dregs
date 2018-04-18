@@ -76,7 +76,7 @@ public class Terrain
       }
    }
    
-   public boolean IsWalkable()
+   public boolean isWalkable()
    {
       return walkable;
    }

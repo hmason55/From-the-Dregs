@@ -79,12 +79,19 @@ public class Unit
    private int currentHitFrame = 0;
    private int currentAttackFrame = 0;
 
-   public enum AnimationDirection
+   public enum Direction
    {
       Up, Down, Left, Right
    }
 
-   private AnimationDirection animationDirection = AnimationDirection.Up;
+   private Direction direction = Direction.Up;
+
+   public enum Type
+   {
+      Player, Bat
+   }
+
+   private Type type;
 
    public static final int[] attackOffsetFrames =
    { -4, 12, 8, 4 };
@@ -92,30 +99,41 @@ public class Unit
    public static final int[] moveOffsetFrames =
    { -48, -44, -36, -24, -12, -4 };
 
-   // References
-   Viewport viewport;
-
-   public Unit(String unitName, boolean isPlayer, Viewport focusedViewport)
+   public Unit(String unitName, boolean isPlayer, Type type, int level)
    {
       name = unitName;
       playerControlled = isPlayer;
-      viewport = focusedViewport;
+      this.type = type;
+      this.level = level;
       myTurn = null;
 
       if (isPlayer)
       {
          hasLight = true;
-         lightStrength = 10;
+         lightStrength = 6;
       }
 
       statusModifiers = new ArrayList<StatusModifier>();
 
-      baseStrength = 10;
-      baseFortitude = 10;
-      baseVitality = 10;
-      baseTenacity = 10;
-      baseSpeed = 10;
-      
+      switch (type)
+      {
+      case Player:
+         baseStrength = 5;
+         baseFortitude = 5;
+         baseVitality = 5;
+         baseTenacity = 5;
+         baseSpeed = 5;
+         break;
+
+      case Bat:
+         baseStrength = 2 + level;
+         baseFortitude = 2 + level;
+         baseVitality = 2 + level;
+         baseTenacity = 2 + level;
+         baseSpeed = 2 + level;
+         break;
+      }
+
       resetAttributes();
 
       calcMaxHealth();
@@ -127,7 +145,6 @@ public class Unit
       resetHealth();
       resetResource();
 
-      level = 0;
       experience = 0;
 
       loadShadowSprite();
@@ -137,6 +154,16 @@ public class Unit
 
       generateMips();
 
+   }
+
+   public String getName()
+   {
+      return name;
+   }
+
+   public Tile getTile()
+   {
+      return tile;
    }
 
    public Image[] getAnimation()
@@ -356,26 +383,13 @@ public class Unit
       return 3;
    }
 
-   public void setViewport(Viewport v)
-   {
-      viewport = v;
-   }
-
-   public Viewport getViewport()
-   {
-      return viewport;
-   }
-
    public void grantExp(int exp)
    {
       experience += exp;
       if (playerControlled)
       {
          System.out.println("Gained " + exp + " exp (" + experience + " total)");
-         if (viewport != null)
-         {
-            viewport.spawnCombatText("+" + exp + " exp", tile.getPosition()[0], tile.getPosition()[1], Color.MAGENTA);
-         }
+         Viewport.spawnCombatText("+" + exp + " exp", tile.getPosition()[0], tile.getPosition()[1], Color.MAGENTA);
       }
 
       boolean done = false;
@@ -392,15 +406,15 @@ public class Unit
       }
    }
 
-   public void beginMoveAnimation(AnimationDirection direction)
+   public void beginMoveAnimation(Direction direction)
    {
-      animationDirection = direction;
+      this.direction = direction;
       currentMoveFrame = 0;
    }
 
-   public void beginAttackAnimation(AnimationDirection direction)
+   public void beginAttackAnimation(Direction direction)
    {
-      animationDirection = direction;
+      this.direction = direction;
       currentAttackFrame = 0;
       currentSprite = attackSprite;
    }
@@ -418,7 +432,7 @@ public class Unit
 
       if (currentMoveFrame > -1 && currentMoveFrame < MOVE_FRAME_SKIP)
       {
-         switch (animationDirection)
+         switch (direction)
          {
          case Up:
             offset[0] = 0;
@@ -446,7 +460,7 @@ public class Unit
          offset[1] = (int) (Math.random() * 9) - 4;
       } else if (currentAttackFrame > -1 && currentAttackFrame < ATTACK_FRAME_SKIP)
       {
-         switch (animationDirection)
+         switch (direction)
          {
          case Up:
             offset[0] = 0;
@@ -479,14 +493,12 @@ public class Unit
       beginHitAnimation();
       System.out.println(name + " took " + damage + " damage.");
 
-      if (dealer.getViewport() != null)
-      {
-         dealer.getViewport().spawnCombatText(damage + "", tile.getPosition()[0], tile.getPosition()[1], Color.WHITE);
-      }
+      Viewport.spawnCombatText(damage + "", tile.getPosition()[0], tile.getPosition()[1], Color.WHITE);
 
       if (currentHealth <= 0)
       {
          dealer.grantExp((1 + level) * 5);
+         currentHealth = 0;
          kill();
       }
    }
@@ -494,7 +506,7 @@ public class Unit
    void kill()
    {
 
-      viewport.getTurnQueue().removeTurns(this);
+      Viewport.turnQueue.removeTurns(this);
 
       tile.setUnit(null);
       System.out.println(name + " died.");
@@ -506,10 +518,7 @@ public class Unit
       if (playerControlled)
       {
          System.out.println("Reached level " + level);
-         if (viewport != null)
-         {
-            viewport.spawnCombatText("Level Up!", tile.getPosition()[0], tile.getPosition()[1], Color.CYAN);
-         }
+         Viewport.spawnCombatText("Level Up!", tile.getPosition()[0], tile.getPosition()[1], Color.CYAN);
       }
    }
 
@@ -535,7 +544,7 @@ public class Unit
 
    public void calcHealthRecovery()
    {
-      healthRecovery = vitality / 8;
+      healthRecovery = 1 + (vitality / 8);
    }
 
    public void calcMaxResource()
@@ -545,7 +554,7 @@ public class Unit
 
    public void calcResourceRecovery()
    {
-      resourceRecovery = fortitude / 6;
+      resourceRecovery = 1 + (fortitude / 6);
    }
 
    public int getResistance()
@@ -642,16 +651,36 @@ public class Unit
       return true;
    }
 
+   private int calcTurnSpeed()
+   {
+      return 1 + (int) (10f - (speed * 0.40f));
+   }
+
    public Turn getTurn()
    {
-      myTurn.setPriority(speed);
+      myTurn.setPriority(calcTurnSpeed());
       return myTurn;
    }
 
    public void beginTurn()
    {
       System.out.println("Begin " + name + "'s turn.");
-      myTurn = new Turn(this, speed);
+      myTurn = new Turn(this, calcTurnSpeed());
+      if (isPlayerControlled())
+      {
+         currentHealth += healthRecovery;
+         currentResource += resourceRecovery;
+
+         if (currentHealth > maxHealth)
+         {
+            currentHealth = maxHealth;
+         }
+
+         if (currentResource > maxResource)
+         {
+            currentResource = maxResource;
+         }
+      }
    }
 
    public void endTurn()
@@ -659,7 +688,7 @@ public class Unit
       System.out.println("End " + name + "'s turn.");
       tickActionEffects();
       recalculateAttributes();
-      viewport.getTurnQueue().endTurn();
+      Viewport.turnQueue.endTurn();
       myTurn = null;
    }
 
@@ -688,22 +717,19 @@ public class Unit
       blockStacks = stacks;
    }
 
-   public void blockDamage(Unit dealer)
+   public boolean blockDamage(Unit dealer)
    {
-
-      beginHitAnimation();
-
-      if (dealer.getViewport() != null)
+      int blockCost = 1 + (int) (maxResource * 0.20f);
+      if (blockStacks > 0 && currentResource >= blockCost)
       {
-         dealer.getViewport().spawnCombatText("BLOCK", tile.getPosition()[0], tile.getPosition()[1], Color.WHITE);
-      }
-
-      if (blockStacks > 0)
-      {
+         beginHitAnimation();
          blockStacks--;
+         currentResource -= blockCost;
+         Viewport.spawnCombatText("BLOCK", tile.getPosition()[0], tile.getPosition()[1], Color.WHITE);
+         return true;
       } else
       {
-         blockStacks = 0;
+         return false;
       }
    }
 
@@ -719,7 +745,7 @@ public class Unit
          }
       }
    }
-   
+
    public void tickActionEffects()
    {
       // Remove expired effects
@@ -735,7 +761,7 @@ public class Unit
          }
       }
    }
-   
+
    public void recalculateAttributes()
    {
       resetAttributes();
@@ -798,7 +824,7 @@ public class Unit
       speed = baseSpeed;
       blockStacks = 0;
    }
-   
+
    public void printAttributes()
    {
       System.out.println("Strength: " + strength);
@@ -808,4 +834,387 @@ public class Unit
       System.out.println("Speed: " + speed);
       System.out.println("Blocks: " + blockStacks);
    }
+
+   public void onMove(Direction direction)
+   {
+      if (!isMyTurn())
+      {
+         return;
+      }
+
+      int x = tile.getPosition()[0];
+      int y = tile.getPosition()[1];
+
+      switch (direction)
+      {
+      case Down:
+         if (y >= Viewport.map.getHeight() - 1)
+         {
+            Viewport.turnQueue.addTurn(myTurn);
+            endTurn();
+            return;
+         } else
+         {
+            y++;
+         }
+         break;
+      case Left:
+         if (x <= 0)
+         {
+            Viewport.turnQueue.addTurn(myTurn);
+            endTurn();
+            return;
+         } else
+         {
+            x--;
+         }
+         break;
+      case Right:
+         if (x >= Viewport.map.getWidth() - 1)
+         {
+            Viewport.turnQueue.addTurn(myTurn);
+            endTurn();
+            return;
+         } else
+         {
+            x++;
+         }
+         break;
+      case Up:
+         if (y <= 0)
+         {
+            Viewport.turnQueue.addTurn(myTurn);
+            endTurn();
+            return;
+         } else
+         {
+            y--;
+         }
+         break;
+      default:
+         Viewport.turnQueue.addTurn(myTurn);
+         endTurn();
+         return;
+      }
+
+      this.direction = direction;
+      Tile toTile = Viewport.map.getTiles()[x][y];
+      if (!toTile.getTerrain().isWalkable())
+      {
+         Viewport.turnQueue.addTurn(myTurn);
+         endTurn();
+         return;
+      }
+
+      if (toTile.getUnit() == null)
+      {
+         // Move unit
+         toTile.setUnit(this);
+         tile.setUnit(null);
+         moveTo(toTile);
+         beginMoveAnimation(direction);
+         recalculateAttributes();
+         if (isPlayerControlled())
+         {
+            Viewport.centerOnPlayer();
+         }
+      } else
+      {
+         onAttack(toTile);
+      }
+
+      Viewport.turnQueue.addTurn(myTurn);
+      Viewport.map.repaintFog();
+      endTurn();
+   }
+
+   public void onAttack(Tile targetTile)
+   {
+      // Combat
+      Unit target = targetTile.getUnit();
+      if(target == null)
+      {
+         return;
+      }
+      
+      Action action = new Action(Action.Moveset.Bite);
+      if (isPlayerControlled())
+      {
+         action = Viewport.actionBar.getSelectedAction();
+      }
+
+      applyActionEffects(action);
+      recalculateAttributes();
+
+      if (!target.blockDamage(this))
+      {
+         int damage = (int) (strength * action.getStrengthScaling()) - target.getResistance();
+
+         if (damage < 0)
+         {
+            damage = 0;
+         }
+
+         target.takeDamage(damage, this);
+      }
+
+      beginAttackAnimation(direction);
+      recalculateAttributes();
+   }
+
+   public void aiTurn()
+   {
+      if (!isMyTurn())
+      {
+         return;
+      }
+
+      if (isPlayerControlled())
+      {
+         return;
+      }
+
+      int x = tile.getPosition()[0];
+      int y = tile.getPosition()[1];
+      int targetX = Viewport.player.getTile().getPosition()[0];
+      int targetY = Viewport.player.getTile().getPosition()[1];
+
+      // Melee attack
+      if(Math.abs(targetX - x) + Math.abs(targetY - y) == 1)
+      {
+         if (targetX == x + 1 && targetY == y)
+         {
+            direction = Direction.Right;
+         } else if (targetX == x - 1 && targetY == y)
+         {
+            direction = Direction.Left;
+         } else if (targetX == x && targetY == y + 1)
+         {
+            direction = Direction.Down;
+         } else if (targetX == x && targetY == y - 1)
+         {
+            direction = Direction.Up;
+         }
+         onAttack(Viewport.player.getTile());
+         Viewport.turnQueue.addTurn(myTurn);
+         endTurn();
+      } else {
+   
+         ArrayList<PathNode> path = findPath(x, y, targetX, targetY);
+   
+         if (path.size() < 2)
+         {
+            Viewport.turnQueue.addTurn(myTurn);
+            endTurn();
+            return;
+         }
+         
+         targetX = path.get(path.size()-2).getPosition()[0];
+         targetY = path.get(path.size()-2).getPosition()[1];
+         
+         if (targetX == x + 1 && targetY == y)
+         {
+            direction = Direction.Right;
+         } else if (targetX == x - 1 && targetY == y)
+         {
+            direction = Direction.Left;
+         } else if (targetX == x && targetY == y + 1)
+         {
+            direction = Direction.Down;
+         } else if (targetX == x && targetY == y - 1)
+         {
+            direction = Direction.Up;
+         }
+   
+         onMove(direction);
+      }
+   }
+
+   // BEGIN AI PATHING
+   // ------------------------------------------------------------------------------------------------
+   private ArrayList<PathNode> findPath(int startX, int startY, int endX, int endY)
+   {
+      PathNode current = null;
+      PathNode start = new PathNode(startX, startY);
+      PathNode end = new PathNode(endX, endY);
+      ArrayList<PathNode> openNodes = new ArrayList<PathNode>();
+      ArrayList<PathNode> closedNodes = new ArrayList<PathNode>();
+      boolean[][] walkableTiles = getWalkableTiles(startX, startY, endX, endY);
+      int distanceFromStart = 0;
+      openNodes.add(start);
+
+      openLoop: while (openNodes.size() > 0)
+      {
+         // Find node with the lowest total distance
+         int lowest = Integer.MAX_VALUE;
+         for (PathNode node : openNodes)
+         {
+            int distance = node.getTotalDistance();
+            if (distance < lowest)
+            {
+               lowest = distance;
+               current = node;
+            }
+         }
+
+         closedNodes.add(current);
+         openNodes.remove(current);
+
+         // Check if the end node is in the closed list to end early
+         for (PathNode node : closedNodes)
+         {
+            if (node.getPosition()[0] == end.getPosition()[0] && node.getPosition()[1] == end.getPosition()[1])
+            {
+               // end early
+               break openLoop;
+            }
+         }
+
+         ArrayList<PathNode> neighborNodes = getWalkableNeighborNodes(current.getPosition()[0],
+               current.getPosition()[1], walkableTiles);
+         distanceFromStart++;
+
+         outer: for (PathNode neighborNode : neighborNodes)
+         {
+            // If closed nodes already contain this node then skip it
+            for (PathNode node : closedNodes)
+            {
+               if (node.getPosition()[0] == neighborNode.getPosition()[0]
+                     && node.getPosition()[1] == neighborNode.getPosition()[1])
+               {
+                  continue outer;
+               }
+            }
+
+            // Check if it's in the open list
+            boolean inOpenNodes = false;
+            for (PathNode node : openNodes)
+            {
+               if (node.getPosition()[0] == neighborNode.getPosition()[0]
+                     && node.getPosition()[1] == neighborNode.getPosition()[1])
+               {
+                  inOpenNodes = true;
+                  continue;
+               }
+            }
+
+            if (inOpenNodes)
+            {
+               // Check if this is a better path
+               if (distanceFromStart + neighborNode.getTrueDistanceFromEnd() < neighborNode.getTotalDistance())
+               {
+                  neighborNode.setDistanceFromStart(distanceFromStart);
+                  neighborNode
+                        .setTotalDistance(neighborNode.getDistanceFromStart() + neighborNode.getTrueDistanceFromEnd());
+                  neighborNode.setParentNode(current);
+               }
+            } else
+            {
+               neighborNode.setDistanceFromStart(distanceFromStart);
+               neighborNode.setTrueDistanceFromEnd(computeTrueDistanceFromEnd(neighborNode.getPosition()[0],
+                     neighborNode.getPosition()[1], endX, endY));
+               neighborNode
+                     .setTotalDistance(neighborNode.getDistanceFromStart() + neighborNode.getTrueDistanceFromEnd());
+               neighborNode.setParentNode(current);
+               openNodes.add(0, neighborNode);
+            }
+         }
+      }
+
+      // Create path
+      ArrayList<PathNode> path = new ArrayList<PathNode>();
+      while (current != null)
+      {
+         path.add(current);
+         current = current.getParentNode();
+      }
+
+      return path;
+   }
+
+   private int computeTrueDistanceFromEnd(int x, int y, int targetX, int targetY)
+   {
+      return Math.abs(targetX - x) + Math.abs(targetY - y);
+   }
+
+   boolean[][] getWalkableTiles(int startX, int startY, int endX, int endY)
+   {
+
+      int width = Viewport.map.getWidth();
+      int height = Viewport.map.getHeight();
+      Tile[][] tiles = Viewport.map.getTiles();
+
+      boolean[][] walkableTiles = new boolean[width][height];
+
+      for (int y = 0; y < height; y++)
+      {
+         for (int x = 0; x < width; x++)
+         {
+            if (tiles[x][y] == null)
+            {
+               walkableTiles[x][y] = false;
+               continue;
+            }
+
+            if (!tiles[x][y].getTerrain().isWalkable())
+            {
+               walkableTiles[x][y] = false;
+               continue;
+            }
+
+            if (tiles[x][y].getUnit() == null)
+            {
+               walkableTiles[x][y] = true;
+               continue;
+            }
+
+            if ((x == startX && y == startY) || (x == endX && y == endY))
+            {
+               walkableTiles[x][y] = true;
+               continue;
+            }
+
+         }
+      }
+      return walkableTiles;
+   }
+
+   ArrayList<PathNode> getWalkableNeighborNodes(int x, int y, boolean[][] walkableTiles)
+   {
+      ArrayList<PathNode> testNodes = new ArrayList<PathNode>();
+
+      if (y > 0)
+      {
+         testNodes.add(new PathNode(x, y - 1));
+      }
+
+      if (y < Viewport.MAP_HEIGHT - 1)
+      {
+         testNodes.add(new PathNode(x, y + 1));
+      }
+
+      if (x > 0)
+      {
+         testNodes.add(new PathNode(x - 1, y));
+      }
+
+      if (x < Viewport.MAP_WIDTH - 1)
+      {
+         testNodes.add(new PathNode(x + 1, y));
+      }
+
+      for (int i = testNodes.size() - 1; i >= 0; i--)
+      {
+         PathNode node = testNodes.get(i);
+         if (!walkableTiles[node.getPosition()[0]][node.getPosition()[1]])
+         {
+            testNodes.remove(i);
+         }
+      }
+
+      return testNodes;
+   }
+
+   // END AI PATHING
+   // --------------------------------------------------------------------------------------------------
 }
