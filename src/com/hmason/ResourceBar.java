@@ -51,7 +51,6 @@ public class ResourceBar implements ImageObserver
       frameLeft = new ImageIcon(FileLoader.loadImage("sprites/ui/hud/resource_frame_left.png")).getImage();
       frameRight = new ImageIcon(FileLoader.loadImage("sprites/ui/hud/resource_frame_right.png")).getImage();
       frameCenter = new ImageIcon(FileLoader.loadImage("sprites/ui/hud/resource_frame_center.png")).getImage();
-
    }
 
    public Image getTypeBar()
@@ -92,7 +91,6 @@ public class ResourceBar implements ImageObserver
 
    public void draw(Unit unit, Graphics g, FontMetrics fm)
    {
-      
       // Draw Fill
       switch (type)
       {
@@ -107,7 +105,6 @@ public class ResourceBar implements ImageObserver
          break;
       }
       
-
       // Draw Frame
       g.drawImage(frameLeft, x, y, 16, height, this);
       g.drawImage(frameCenter, x + 16, y, width, height, this);
@@ -144,7 +141,6 @@ public class ResourceBar implements ImageObserver
    @Override
    public boolean imageUpdate(Image arg0, int arg1, int arg2, int arg3, int arg4, int arg5)
    {
-      // TODO Auto-generated method stub
       return false;
    }
 }

@@ -14,6 +14,7 @@ public class StatusModifier
    private int duration = 0; // -1 = Infinite, 0 = remove immediately, 1 = until end of current turn, 
                              // 2 = until end of next turn
 
+   // Default constructor for int values
    public StatusModifier(boolean selfEffect, Type modifierType, int value, int duration)
    {
       this.selfEffect = selfEffect;
@@ -21,7 +22,8 @@ public class StatusModifier
       this.value = (float) value;
       this.duration = duration;
    }
-
+   
+   // Default constructor for float values
    public StatusModifier(boolean selfEffect, Type modifierType, float value, int duration)
    {
       this.selfEffect = selfEffect;

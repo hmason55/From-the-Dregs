@@ -35,6 +35,7 @@ public class Terrain
          
       }else
       {
+         tile.setLightPassthrough(true);
          source = new ImageIcon(FileLoader.loadImage("sprites/biomes/dirt_tile.png")).getImage();
       }
       
@@ -60,6 +61,7 @@ public class Terrain
       }
    }
 
+   // Create mipmaps for each Zoom level (1x, 2x, 3x)
    private void generateMips()
    {
       if (source != null)

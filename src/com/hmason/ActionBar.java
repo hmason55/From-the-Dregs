@@ -9,12 +9,10 @@ import java.util.ArrayList;
 
 public class ActionBar implements ImageObserver
 {
-
    private int x;
    private int y;
    private int width;
    private int height;
-   private int columns;
 
    private int buttonWidth;
    private int buttonHeight;
@@ -25,9 +23,8 @@ public class ActionBar implements ImageObserver
    private ArrayList<ActionButton> actionButtons;
    private int selectedIndex;
 
-   public ActionBar(int x, int y, int columns)
+   public ActionBar(int x, int y)
    {
-      this.columns = columns;
       actionButtons = new ArrayList<ActionButton>();
       selectedIndex = 0;
       buttonWidth = 64;
@@ -96,8 +93,6 @@ public class ActionBar implements ImageObserver
       g.setColor(Color.GRAY);
       g.drawRect(x, y, width, height);
 
-      //g.setColor(Color.YELLOW);
-      //g.drawRect(x + selectedIndex + paddingHorizontal/2, y, buttonWidth + paddingHorizontal, buttonHeight + paddingVertical);
       int rx = x + paddingHorizontal;
       int ry = y + paddingVertical;
       for (int i = 0; i < actionButtons.size(); i++)
@@ -122,7 +117,6 @@ public class ActionBar implements ImageObserver
    @Override
    public boolean imageUpdate(Image arg0, int arg1, int arg2, int arg3, int arg4, int arg5)
    {
-      // TODO Auto-generated method stub
       return false;
    }
 }

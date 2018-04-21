@@ -1,13 +1,8 @@
 package com.hmason;
 
-import java.awt.Graphics;
-import java.awt.Image;
-import java.awt.image.ImageObserver;
-import java.awt.image.ImageProducer;
-
 public class Tile
 {
-
+   
    public final static int WIDTH = 48;
    public final static int HEIGHT = 48;
 
@@ -29,9 +24,18 @@ public class Tile
       item = null;
       fog = new Fog(1f);
       lightStrength = -1;
-      lightPassthrough = true;
+      lightPassthrough = false;
 
       if (y == Viewport.MAP_HEIGHT - 1 || x == 0 || x == Viewport.MAP_WIDTH - 1)
+      {
+         terrain = new Terrain(true, "top", this);
+      } else if(y == 3 && x >= 3 && x < 6)
+      {
+         terrain = new Terrain(true, "top", this);
+      } else if(y == 4 && x >= 3 && x < 6)
+      {
+         terrain = new Terrain(true, "side", this);
+      } else if(y == 4 && x == 4)
       {
          terrain = new Terrain(true, "top", this);
       } else if (y == 0)
@@ -44,7 +48,6 @@ public class Tile
 
       positionX = x;
       positionY = y;
-
    }
 
    public Unit getUnit()

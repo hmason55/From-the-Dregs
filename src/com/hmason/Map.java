@@ -3,9 +3,10 @@ package com.hmason;
 public class Map
 {
    private int width;
-   public int height;
+   private int height;
    private Tile[][] tiles;
 
+   // Default constructor
    public Map(int width, int height)
    {
       this.width = width;
@@ -46,6 +47,7 @@ public class Map
       tiles[x][y] = t;
    }
 
+   // Spawns a unit u at position x, y
    public void spawnUnit(Unit u, int x, int y)
    {
       if (tiles[x][y].getUnit() == null)
@@ -57,10 +59,43 @@ public class Map
          System.out.println("A unit already exists at " + x + ", " + y);
       }
    }
+   
+   // Spawns an enemy at a random position
+   public Unit spawnEnemy(int level)
+   {
+      int maxAttempts = 30;
+      int attempts = 0;
+      int x = 1;
+      int y = 1;
+      Unit unit = null;
+      while(attempts < maxAttempts)
+      {
+         x = (int)(Math.random()*(width-2)) + 1;
+         y = (int)(Math.random()*(height-2)) + 1;
+         
+         if(tiles[x][y].getUnit() == null && tiles[x][y].getTerrain().isWalkable())
+         {
+            int min = 1;
+            int max = 6;
+            Unit.Type type = Unit.Type.values()[(int) ((Math.random()*(max-min)+min))];
 
+            String name = type.toString();
+            unit = new Unit(name, false, type, level);
+            tiles[x][y].setUnit(unit);
+            unit.moveTo(tiles[x][y]);
+            attempts = maxAttempts;
+         } else {
+            attempts++;
+         }
+      }
+      
+      System.out.println(x + ", " + y);
+      return unit;
+   }
+
+   // Updates the fog using floodFill
    public void repaintFog()
    {
-
       // Reset fog
       for (int y = 0; y < height; y++)
       {
@@ -85,6 +120,7 @@ public class Map
       }
    }
 
+   // Uses recursion to 4-way fill a 2D grid
    private void floodFill(int x, int y, boolean[][] visited, int n, int m, int originX, int originY, int lightStrength)
    {
       if (x < 0 || y < 0)
@@ -137,6 +173,8 @@ public class Map
          {
             return;
          }
+      } else {
+         return;
       }
 
       // Fill other four directions

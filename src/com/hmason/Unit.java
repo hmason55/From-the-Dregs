@@ -46,7 +46,6 @@ public class Unit
 
    // Combat variables
    ArrayList<StatusModifier> statusModifiers;
-   private boolean inCombat = false;
    private int blockStacks = 0;
 
    // Appearance
@@ -78,7 +77,17 @@ public class Unit
    private int currentMoveFrame = 0;
    private int currentHitFrame = 0;
    private int currentAttackFrame = 0;
+   
+   private int attributePoints = 0;
 
+   public enum AttributeType
+   {
+      Strength,
+      Vitality,
+      Fortitude,
+      Tenacity
+   }
+   
    public enum Direction
    {
       Up, Down, Left, Right
@@ -88,7 +97,7 @@ public class Unit
 
    public enum Type
    {
-      Player, Bat
+      Player, Bat, Goblin, Lizardman, Dragon, Ogre
    }
 
    private Type type;
@@ -126,11 +135,41 @@ public class Unit
          break;
 
       case Bat:
-         baseStrength = 2 + level;
-         baseFortitude = 2 + level;
-         baseVitality = 2 + level;
-         baseTenacity = 2 + level;
-         baseSpeed = 2 + level;
+         baseStrength = 2 +  (int)(level*0.50f);
+         baseFortitude = 2 + (int)(level*0.65f);
+         baseVitality = 2 +  (int)(level*0.65f);
+         baseTenacity = 2 +  (int)(level*0.25f);
+         baseSpeed = 2 +     (int)(level*0.85f);
+         break;
+         
+      case Goblin:
+         baseStrength = 2 +  (int)(level*0.85f);
+         baseFortitude = 2 + (int)(level*0.65f);
+         baseVitality = 2 +  (int)(level*1.00f);
+         baseTenacity = 2 +  (int)(level*0.45f);
+         baseSpeed = 2 +     (int)(level*0.65f);
+         break;
+         
+      case Lizardman:
+         baseStrength = 2 +  (int)(level*0.70f);
+         baseFortitude = 2 + (int)(level*0.65f);
+         baseVitality = 2 +  (int)(level*1.25f);
+         baseTenacity = 2 +  (int)(level*0.65f);
+         baseSpeed = 2 +     (int)(level*0.50f);
+         break;
+      case Dragon:
+         baseStrength = 2 +  (int)(level*1.00f);
+         baseFortitude = 2 + (int)(level*0.65f);
+         baseVitality = 2 +  (int)(level*3.50f);
+         baseTenacity = 2 +  (int)(level*2.00f);
+         baseSpeed = 2 +     (int)(level*0.25f);
+         break;
+      case Ogre:
+         baseStrength = 2 +  (int)(level*1.00f);
+         baseFortitude = 2 + (int)(level*0.65f);
+         baseVitality = 2 +  (int)(level*2.80f);
+         baseTenacity = 2 +  (int)(level*0.25f);
+         baseSpeed = 2 +     (int)(level*0.25f);
          break;
       }
 
@@ -310,13 +349,32 @@ public class Unit
    {
       // Initialize Idle Animation
       idleAnimation = new Image[IDLE_FRAMES];
-      idleSource = new ImageIcon(FileLoader.loadImage("sprites/units/knight/knight_idle_sheet.png")).getImage();
-      if (playerControlled)
+     // idleSource = new ImageIcon(FileLoader.loadImage("sprites/units/knight/knight_idle_sheet.png")).getImage();
+      
+      switch(type)
       {
-
-      } else
-      {
+      case Bat:
          idleSource = new ImageIcon(FileLoader.loadImage("sprites/units/bat/bat_small_idle_sheet.png")).getImage();
+         break;
+         
+      case Goblin:
+         idleSource = new ImageIcon(FileLoader.loadImage("sprites/units/goblin/goblin_idle_sheet.png")).getImage();
+         break;
+         
+      case Lizardman:
+         idleSource = new ImageIcon(FileLoader.loadImage("sprites/units/lizardman/lizardman_idle_sheet.png")).getImage();
+         break;
+         
+      case Player:
+         idleSource = new ImageIcon(FileLoader.loadImage("sprites/units/knight/knight_idle_sheet.png")).getImage();
+         break;
+      case Dragon:
+         idleSource = new ImageIcon(FileLoader.loadImage("sprites/units/dragon/dragon_idle_sheet.png")).getImage();
+         break;
+      case Ogre:
+         idleSource = new ImageIcon(FileLoader.loadImage("sprites/units/ogre/ogre_idle_sheet.png")).getImage();
+         break;
+
       }
 
       for (int i = 0; i < IDLE_FRAMES; i++)
@@ -368,21 +426,54 @@ public class Unit
       attackSprite = bufferedImage.getScaledInstance(Tile.WIDTH, Tile.HEIGHT, Image.SCALE_FAST);
    }
 
-   private int calcSheetIndex(int index)
+   public int getAttributePoints()
    {
-      if (index < 10)
-      {
-         return 0;
-      } else if (index < 11)
-      {
-         return 1;
-      } else if (index < 22)
-      {
-         return 2;
-      }
-      return 3;
+      return attributePoints;
    }
-
+   
+   public void spendAttributePoint(AttributeType attributeType)
+   {
+      if(attributePoints <= 0)
+      {
+         return;
+      }
+      
+      switch(attributeType)
+      {
+      case Fortitude:
+         baseFortitude += 5;
+         attributePoints--;
+         Viewport.spawnCombatText("+5 Fortitude", tile.getPosition()[0], tile.getPosition()[1], Color.GREEN);
+         break;
+      case Strength:
+         baseStrength += 5;
+         attributePoints--;
+         Viewport.spawnCombatText("+5 Strength", tile.getPosition()[0], tile.getPosition()[1], Color.GREEN);
+         break;
+      case Tenacity:
+         baseTenacity += 5;
+         attributePoints--;
+         Viewport.spawnCombatText("+5 Tenacity", tile.getPosition()[0], tile.getPosition()[1], Color.GREEN);
+         break;
+      case Vitality:
+         baseVitality += 5;
+         attributePoints--;
+         Viewport.spawnCombatText("+5 Vitality", tile.getPosition()[0], tile.getPosition()[1], Color.GREEN);
+         break;
+      }
+      recalculateAttributes();
+      
+      baseSpeed += 1;
+      calcMaxHealth();
+      calcHealthRecovery();
+      
+      calcMaxResource();
+      calcResourceRecovery();
+      
+      recalculateAttributes();
+      
+   }
+   
    public void grantExp(int exp)
    {
       experience += exp;
@@ -497,7 +588,7 @@ public class Unit
 
       if (currentHealth <= 0)
       {
-         dealer.grantExp((1 + level) * 5);
+         dealer.grantExp((int)((1 + level) * 1.5));
          currentHealth = 0;
          kill();
       }
@@ -510,6 +601,15 @@ public class Unit
 
       tile.setUnit(null);
       System.out.println(name + " died.");
+      if(!isPlayerControlled())
+      {
+         Viewport.enemiesDefeated++;
+         Unit unit = Viewport.map.spawnEnemy(Viewport.player.getLevel());
+         if(unit != null)
+         {
+            Viewport.turnQueue.addTurn(new Turn(unit, unit.calcTurnSpeed()));
+         }  
+      }
    }
 
    public void levelUp()
@@ -517,6 +617,7 @@ public class Unit
       level++;
       if (playerControlled)
       {
+         attributePoints++;
          System.out.println("Reached level " + level);
          Viewport.spawnCombatText("Level Up!", tile.getPosition()[0], tile.getPosition()[1], Color.CYAN);
       }
@@ -651,7 +752,7 @@ public class Unit
       return true;
    }
 
-   private int calcTurnSpeed()
+   public int calcTurnSpeed()
    {
       return 1 + (int) (10f - (speed * 0.40f));
    }
@@ -924,13 +1025,15 @@ public class Unit
       }
 
       Viewport.turnQueue.addTurn(myTurn);
-      Viewport.map.repaintFog();
+      if(isPlayerControlled())
+      {
+         Viewport.map.repaintFog();
+      }
       endTurn();
    }
 
    public void onAttack(Tile targetTile)
    {
-      // Combat
       Unit target = targetTile.getUnit();
       if(target == null)
       {
@@ -946,6 +1049,7 @@ public class Unit
       applyActionEffects(action);
       recalculateAttributes();
 
+      // Calculate the combat damage
       if (!target.blockDamage(this))
       {
          int damage = (int) (strength * action.getStrengthScaling()) - target.getResistance();
@@ -962,6 +1066,7 @@ public class Unit
       recalculateAttributes();
    }
 
+   // Let ai decide the turn
    public void aiTurn()
    {
       if (!isMyTurn())
@@ -1029,9 +1134,10 @@ public class Unit
          onMove(direction);
       }
    }
-
+   
+   // --------------------------------------------------------------------------------------------------
    // BEGIN AI PATHING
-   // ------------------------------------------------------------------------------------------------
+   // --------------------------------------------------------------------------------------------------
    private ArrayList<PathNode> findPath(int startX, int startY, int endX, int endY)
    {
       PathNode current = null;
@@ -1132,11 +1238,13 @@ public class Unit
       return path;
    }
 
+   // Manhattan distance from (x, y) to (targetX, targetY)
    private int computeTrueDistanceFromEnd(int x, int y, int targetX, int targetY)
    {
       return Math.abs(targetX - x) + Math.abs(targetY - y);
    }
 
+   // A 2D boolean array of all tiles that a unit can walk on
    boolean[][] getWalkableTiles(int startX, int startY, int endX, int endY)
    {
 
@@ -1214,7 +1322,7 @@ public class Unit
 
       return testNodes;
    }
-
+   // --------------------------------------------------------------------------------------------------
    // END AI PATHING
    // --------------------------------------------------------------------------------------------------
 }

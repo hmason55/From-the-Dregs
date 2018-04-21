@@ -9,23 +9,15 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
-import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
-
 import javax.swing.AbstractAction;
 import javax.swing.ActionMap;
-import javax.swing.ImageIcon;
 import javax.swing.InputMap;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 import javax.swing.Timer;
@@ -33,8 +25,8 @@ import javax.swing.Timer;
 public class Viewport extends JPanel implements ActionListener, Runnable
 {
 
-   private static int viewWidth = 1280;
-   private static int viewHeight = 720;
+   public static int viewWidth = 1280;
+   public static int viewHeight = 720;
 
    private final int SCROLL_SPEED_X = 48;
    private final int SCROLL_SPEED_Y = 48;
@@ -53,7 +45,6 @@ public class Viewport extends JPanel implements ActionListener, Runnable
    }
 
    private Thread drawThread;
-   private Thread inputThread;
    private Timer timer;
    public static Map map;
    public static int MAP_WIDTH = 16;
@@ -68,12 +59,8 @@ public class Viewport extends JPanel implements ActionListener, Runnable
    private boolean allowAnimate = true;
 
    public static Unit player;
-   private static int playerX;
-   private static int playerY;
 
    private Font combatFont;
-
-   private HUD hud;
 
    private static ArrayList<CombatText> combatText;
    public static TurnQueue turnQueue;
@@ -86,20 +73,26 @@ public class Viewport extends JPanel implements ActionListener, Runnable
    private ActionButton secondAction;
    private ActionButton thirdAction;
    private ActionButton fourthAction;
+   
+   public static int enemiesDefeated = 0;
+   
+   private CharacterMenu characterMenu;
+   public static boolean paused = true;
 
    public static ActionBar actionBar;
-
+   
+   @SuppressWarnings("serial")
    private void Init()
    {
 
-      // Load font
-
+     // Start a new thread
       if (drawThread == null)
       {
          drawThread = new Thread((Runnable) this);
          drawThread.start();
       }
-
+      
+      // Load font
       try
       {
          Font font = Font.createFont(Font.TRUETYPE_FONT, FileLoader.loadResource("fonts/6px2bus.ttf"));
@@ -114,38 +107,29 @@ public class Viewport extends JPanel implements ActionListener, Runnable
          e.printStackTrace();
       }
 
+      // Initialize the camera
       cameraTargetX = 0;
       cameraTargetY = 0;
 
+      
       combatText = new ArrayList<CombatText>();
-      turnQueue = new TurnQueue();
+      
 
+      // Initialize the map and spawn units
       map = new Map(MAP_WIDTH, MAP_HEIGHT);
-
+      turnQueue = new TurnQueue();
       player = new Unit("Player", true, Unit.Type.Player, 0);
-      map.spawnUnit(player, 5, 6);
-
-      Unit bat1 = new Unit("Bat", false, Unit.Type.Bat, 0);
-      map.spawnUnit(bat1, 2, 3);
-
-      Unit bat2 = new Unit("Bat", false, Unit.Type.Bat, 0);
-      map.spawnUnit(bat2, 2, 6);
-
-      Unit bat3 = new Unit("Bat", false, Unit.Type.Bat, 0);
-      map.spawnUnit(bat3, 1, 7);
-      
-      Unit bat4 = new Unit("Bat", false, Unit.Type.Bat, 1);
-      map.spawnUnit(bat4, 5, 8);
-      
-      Unit bat5 = new Unit("Bat", false, Unit.Type.Bat, 1);
-      map.spawnUnit(bat5, 6, 6);
-
+      map.spawnUnit(player, 10, 10);
       turnQueue.addTurn(new Turn(player, 1));
-      turnQueue.addTurn(new Turn(bat1, 1));
-      turnQueue.addTurn(new Turn(bat2, 1));
-      turnQueue.addTurn(new Turn(bat3, 1));
-      turnQueue.addTurn(new Turn(bat4, 1));
-      turnQueue.addTurn(new Turn(bat5, 1));
+      
+      for(int i = 0; i < 5; i++)
+      {
+         Unit enemy = map.spawnEnemy(player.getLevel());
+         if(enemy != null)
+         {
+            turnQueue.addTurn(new Turn(enemy, enemy.calcTurnSpeed()));
+         }
+      }
 
       turnQueue.start();
 
@@ -153,27 +137,30 @@ public class Viewport extends JPanel implements ActionListener, Runnable
 
       centerOnPlayer();
 
+      // Initialize the resource bars
       healthBar = new ResourceBar(0, 8, ResourceBar.ResourceType.Health);
       resourceBar = new ResourceBar(0, 24, ResourceBar.ResourceType.Resource);
       experienceBar = new ResourceBar(0, 40, ResourceBar.ResourceType.Experience);
 
+      // Initialize player's the action bar
       firstAction = new ActionButton(0, 0, "[ 1 ]  Light", new Action(Action.Moveset.Forward_Slash));
       secondAction = new ActionButton(0, 0, "[ 2 ]  Heavy", new Action(Action.Moveset.Crushing_Swing));
       thirdAction = new ActionButton(0, 0, "[ 3 ]  Block", new Action(Action.Moveset.Defensive_Stance));
-      // fourthAction = new ActionButton(0, 0, "4", new
-      // Action(Action.Moveset.Defensive_Stance));
 
-      actionBar = new ActionBar(0, 0, 4);
+      actionBar = new ActionBar(0, 0);
       actionBar.add(firstAction);
       actionBar.add(secondAction);
       actionBar.add(thirdAction);
-      // actionBar.add(fourthAction);
+
       actionBar.selectAction(0);
+      
+      characterMenu = new CharacterMenu();
 
       setBackground(Color.BLACK);
       setPreferredSize(new Dimension(viewWidth, viewHeight));
       setDoubleBuffered(true);
 
+      // Initialize hotkeys
       InputMap inputMap = getInputMap(WHEN_FOCUSED);
       ActionMap actionMap = getActionMap();
 
@@ -195,79 +182,126 @@ public class Viewport extends JPanel implements ActionListener, Runnable
          inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_2, 0), "on2");
          inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_3, 0), "on3");
          inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_4, 0), "on4");
+         
+         inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F1, 0), "onF1");
+         inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F2, 0), "onF2");
+         inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F3, 0), "onF3");
+         inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F4, 0), "onF4");
 
+         // When the "Up" key is pressed
          actionMap.put("onUp", new AbstractAction()
          {
             public void actionPerformed(ActionEvent e)
             {
-               // Enter pressed
+               if(paused)
+               {
+                  return;
+               }
                onScrollUp();
             }
          });
 
+         // When the "Down" key is pressed
          actionMap.put("onDown", new AbstractAction()
          {
             public void actionPerformed(ActionEvent e)
             {
-               // Enter pressed
+               if(paused)
+               {
+                  return;
+               }
                onScrollDown();
             }
          });
 
+         // When the "Left" key is pressed
          actionMap.put("onLeft", new AbstractAction()
          {
             public void actionPerformed(ActionEvent e)
             {
-               // Enter pressed
+               if(paused)
+               {
+                  return;
+               }
                onScrollLeft();
             }
          });
-
+         
+         // When the "Right" key is pressed
          actionMap.put("onRight", new AbstractAction()
          {
             public void actionPerformed(ActionEvent e)
             {
-               // Enter pressed
+               if(paused)
+               {
+                  return;
+               }
                onScrollRight();
             }
          });
 
+         // When the "W" key is pressed
          actionMap.put("onW", new AbstractAction()
          {
             public void actionPerformed(ActionEvent e)
             {
+               if(paused)
+               {
+                  return;
+               }
                player.onMove(Unit.Direction.Up);
             }
          });
 
+         // When the "S" key is pressed
          actionMap.put("onS", new AbstractAction()
          {
             public void actionPerformed(ActionEvent e)
             {
+               if(paused)
+               {
+                  return;
+               }
                player.onMove(Unit.Direction.Down);
             }
          });
-
+         
+         // When the "A" key is pressed
          actionMap.put("onA", new AbstractAction()
          {
             public void actionPerformed(ActionEvent e)
             {
+               if(paused)
+               {
+                  return;
+               }
                player.onMove(Unit.Direction.Left);
             }
          });
-
+         
+         // When the "A" key is pressed
          actionMap.put("onD", new AbstractAction()
          {
             public void actionPerformed(ActionEvent e)
             {
+               if(paused)
+               {
+                  return;
+               }
                player.onMove(Unit.Direction.Right);
             }
          });
 
+         // When the "1" key is pressed
          actionMap.put("on1", new AbstractAction()
          {
             public void actionPerformed(ActionEvent e)
             {
+               if(paused)
+               {
+                  return;
+               }
+               
                if (player.isMyTurn())
                {
                   actionBar.selectAction(0);
@@ -275,10 +309,16 @@ public class Viewport extends JPanel implements ActionListener, Runnable
             }
          });
 
+         // When the "2" key is pressed
          actionMap.put("on2", new AbstractAction()
          {
             public void actionPerformed(ActionEvent e)
             {
+               if(paused)
+               {
+                  return;
+               }
+               
                if (player.isMyTurn())
                {
                   actionBar.selectAction(1);
@@ -286,10 +326,16 @@ public class Viewport extends JPanel implements ActionListener, Runnable
             }
          });
 
+         // When the "3" key is pressed
          actionMap.put("on3", new AbstractAction()
          {
             public void actionPerformed(ActionEvent e)
             {
+               if(paused)
+               {
+                  return;
+               }
+               
                if (player.isMyTurn())
                {
                   actionBar.selectAction(2);
@@ -297,14 +343,76 @@ public class Viewport extends JPanel implements ActionListener, Runnable
             }
          });
 
+         // When the "4" key is pressed
          actionMap.put("on4", new AbstractAction()
          {
             public void actionPerformed(ActionEvent e)
             {
+               if(paused)
+               {
+                  return;
+               }
+               
                if (player.isMyTurn())
                {
-                  // actionBar.selectAction(3);
+                  // No functionality yet
                }
+            }
+         });
+         
+         // When the "F1" key is pressed
+         actionMap.put("onF1", new AbstractAction()
+         {
+            public void actionPerformed(ActionEvent e)
+            {
+               if(!paused)
+               {
+                  return;
+               }
+               
+               player.spendAttributePoint(Unit.AttributeType.Strength);
+            }
+         });
+         
+         // When the "F2" key is pressed
+         actionMap.put("onF2", new AbstractAction()
+         {
+            public void actionPerformed(ActionEvent e)
+            {
+               if(!paused)
+               {
+                  return;
+               }
+               
+               player.spendAttributePoint(Unit.AttributeType.Vitality);
+            }
+         });
+         
+         // When the "F3" key is pressed
+         actionMap.put("onF3", new AbstractAction()
+         {
+            public void actionPerformed(ActionEvent e)
+            {
+               if(!paused)
+               {
+                  return;
+               }
+               
+               player.spendAttributePoint(Unit.AttributeType.Fortitude);
+            }
+         });
+         
+         // When the "F4" key is pressed
+         actionMap.put("onF4", new AbstractAction()
+         {
+            public void actionPerformed(ActionEvent e)
+            {
+               if(!paused)
+               {
+                  return;
+               }
+               
+               player.spendAttributePoint(Unit.AttributeType.Tenacity);
             }
          });
       }
@@ -313,6 +421,7 @@ public class Viewport extends JPanel implements ActionListener, Runnable
       timer.start();
    }
 
+   // Moves the camera up by SCROLL_SPEED_Y
    private void onScrollUp()
    {
       if (mapPositionY == cameraTargetY)
@@ -321,6 +430,7 @@ public class Viewport extends JPanel implements ActionListener, Runnable
       }
    }
 
+   // Moves the camera down by SCROLL_SPEED_Y
    private void onScrollDown()
    {
       if (mapPositionY == cameraTargetY)
@@ -329,6 +439,7 @@ public class Viewport extends JPanel implements ActionListener, Runnable
       }
    }
 
+   // Moves the camera left by SCROLL_SPEED_X
    private void onScrollLeft()
    {
       if (mapPositionX == cameraTargetX)
@@ -337,6 +448,7 @@ public class Viewport extends JPanel implements ActionListener, Runnable
       }
    }
 
+   // Moves the camera right by SCROLL_SPEED_X
    private void onScrollRight()
    {
       if (mapPositionX == cameraTargetX)
@@ -345,6 +457,7 @@ public class Viewport extends JPanel implements ActionListener, Runnable
       }
    }
 
+   // Set cameraTargetX and cameraTargetY to the player's position
    public static void centerOnPlayer()
    {
       cameraTargetX = (viewWidth / 2 - Tile.WIDTH / 2 * VIEW_ZOOM)
@@ -353,6 +466,7 @@ public class Viewport extends JPanel implements ActionListener, Runnable
             - player.getTile().getPosition()[1] * Tile.HEIGHT / 2 * VIEW_ZOOM;
    }
 
+   // Moves the screen towards (cameraTargetX, cameraTargetY)
    private void moveCamera()
    {
       // Move towards X position
@@ -380,177 +494,10 @@ public class Viewport extends JPanel implements ActionListener, Runnable
       }
    }
 
-   private void onMoveUp()
-   {
-      if (playerY > 0)
-      {
-         Tile toTile = map.getTiles()[playerX][playerY - 1];
-         if (!toTile.getTerrain().isWalkable())
-         {
-            return;
-         }
-
-         if (toTile.getUnit() == null)
-         {
-            toTile.setUnit(player);
-            player.moveTo(toTile);
-            map.getTiles()[playerX][playerY].setUnit(null);
-            player.beginMoveAnimation(Unit.Direction.Up);
-            playerY--;
-            centerOnPlayer();
-         } else
-         {
-            if (player.isMyTurn())
-            {
-               toTile.getUnit().takeDamage(2, player);
-               player.beginAttackAnimation(Unit.Direction.Up);
-               // turnQueue.addTurn(player.getTurn());
-               // player.endTurn();
-            }
-         }
-      }
-      map.repaintFog();
-   }
-
-   private void onMoveDown()
-   {
-      if (!player.isMyTurn())
-      {
-         return;
-      }
-
-      if (playerY < map.getHeight() - 1)
-      {
-         Tile toTile = map.getTiles()[playerX][playerY + 1];
-         if (!toTile.getTerrain().isWalkable())
-         {
-            return;
-         }
-
-         if (toTile.getUnit() == null)
-         {
-            // Move unit
-            toTile.setUnit(player);
-            player.moveTo(toTile);
-            map.getTiles()[playerX][playerY].setUnit(null);
-            player.beginMoveAnimation(Unit.Direction.Down);
-            playerY++;
-
-            player.recalculateAttributes();
-
-            turnQueue.addTurn(player.getTurn());
-            player.endTurn();
-
-            centerOnPlayer();
-         } else
-         {
-            // Combat
-            Unit target = toTile.getUnit();
-            Action action = actionBar.getSelectedAction();
-            player.applyActionEffects(action);
-            player.recalculateAttributes();
-
-            if (target.getBlockStacks() > 0)
-            {
-               target.blockDamage(player);
-            } else
-            {
-               int damage = (int) (player.getStrength() * action.getStrengthScaling()) - target.getResistance();
-
-               if (damage < 0)
-               {
-                  damage = 0;
-               }
-
-               target.takeDamage(damage, player);
-            }
-
-            player.beginAttackAnimation(Unit.Direction.Down);
-            player.recalculateAttributes();
-
-            turnQueue.addTurn(player.getTurn());
-            player.endTurn();
-
-         }
-         // player.printAttributes();
-      }
-      map.repaintFog();
-   }
-
-   private void onMoveLeft()
-   {
-      if (playerX > 0)
-      {
-         Tile toTile = map.getTiles()[playerX - 1][playerY];
-         if (!toTile.getTerrain().isWalkable())
-         {
-            return;
-         }
-
-         if (toTile.getUnit() == null)
-         {
-            toTile.setUnit(player);
-            player.moveTo(toTile);
-            map.getTiles()[playerX][playerY].setUnit(null);
-            player.beginMoveAnimation(Unit.Direction.Left);
-            playerX--;
-            centerOnPlayer();
-         } else
-         {
-            if (player.isMyTurn())
-            {
-               toTile.getUnit().takeDamage(2, player);
-               player.beginAttackAnimation(Unit.Direction.Left);
-               // turnQueue.addTurn(player.getTurn());
-               // player.endTurn();
-            }
-         }
-      }
-      map.repaintFog();
-   }
-
-   private void onMoveRight()
-   {
-      if (playerX < map.getWidth() - 1)
-      {
-         Tile toTile = map.getTiles()[playerX + 1][playerY];
-         if (!toTile.getTerrain().isWalkable())
-         {
-            return;
-         }
-
-         if (toTile.getUnit() == null)
-         {
-            toTile.setUnit(player);
-            player.moveTo(toTile);
-            map.getTiles()[playerX][playerY].setUnit(null);
-            player.beginMoveAnimation(Unit.Direction.Right);
-            playerX++;
-            centerOnPlayer();
-         } else
-         {
-            if (player.isMyTurn())
-            {
-               toTile.getUnit().takeDamage(2, player);
-               player.beginAttackAnimation(Unit.Direction.Right);
-               // turnQueue.addTurn(player.getTurn());
-               // player.endTurn();
-            }
-
-         }
-      }
-      map.repaintFog();
-   }
-
-   // Add components to the viewport
+   // Add combat text to the viewport
    public static void spawnCombatText(String text, int x, int y, Color color)
    {
       combatText.add(new CombatText(text, x, y, color));
-   }
-
-   public void flashScreen()
-   {
-
    }
 
    @Override
@@ -559,8 +506,14 @@ public class Viewport extends JPanel implements ActionListener, Runnable
       super.paintComponent(g);
       viewWidth = getSize().width;
       viewHeight = getSize().height;
+      
+      if(player.getAttributePoints() > 0)
+      {
+         paused = true;
+      } else {
+         paused = false;
+      }
 
-      // primaryAction.setPosition(16, viewHeight-primaryAction.getHeight() - 32);
       actionBar.setPosition(16, viewHeight - 112);
 
       if ((frameCounter % ANIMATION_FRAME_SKIP) == ANIMATION_FRAME_SKIP - 1)
@@ -582,8 +535,7 @@ public class Viewport extends JPanel implements ActionListener, Runnable
          e.printStackTrace();
       }
       moveCamera();
-      
-
+     
       drawMap(g);
    }
 
@@ -592,7 +544,7 @@ public class Viewport extends JPanel implements ActionListener, Runnable
 
       Graphics2D g2d = (Graphics2D) g.create();
       FontMetrics fm = g2d.getFontMetrics();
-      AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f);
+      //AlphaComposite ac = AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f);
       
       // Draw Terrain
       for (int y = 0; y < map.getHeight(); y++)
@@ -646,7 +598,6 @@ public class Viewport extends JPanel implements ActionListener, Runnable
                            + (unit.getAnimationOffsetPosition()[1] * VIEW_ZOOM) / 2 - (Tile.HEIGHT / 2 * VIEW_ZOOM),
                      this);
             }
-
          }
       }
 
@@ -655,18 +606,16 @@ public class Viewport extends JPanel implements ActionListener, Runnable
       {
          for (int x = 0; x < map.getWidth(); x++)
          {
-
             Tile tile = map.getTiles()[x][y];
             Fog fog = tile.getFog();
             if (fog != null)
             {
 
                fog.setMipLevel(VIEW_ZOOM);
-               g2d.setComposite(ac.getInstance(AlphaComposite.SRC_OVER, fog.getDensity()));
+               g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, fog.getDensity()));
                g2d.drawImage(fog.getSprite(), mapPositionX + Tile.WIDTH * VIEW_ZOOM * x,
                      mapPositionY + Tile.HEIGHT / 2 * VIEW_ZOOM * y, this);
             }
-
          }
       }
 
@@ -704,12 +653,15 @@ public class Viewport extends JPanel implements ActionListener, Runnable
          }
       }
 
+      // Draw the resource bars
       healthBar.draw(player, g, fm);
       resourceBar.draw(player, g, fm);
       experienceBar.draw(player, g, fm);
 
+      // Draw the action bar
       actionBar.draw(player, g, fm);
 
+      // Draw text displaying current unit's turn
       g.setColor(Color.BLACK);
       g.drawString(turnQueue.getTurnName(), 17, viewHeight - 160);
       g.drawString(turnQueue.getTurnName(), 16, viewHeight - 159);
@@ -717,6 +669,14 @@ public class Viewport extends JPanel implements ActionListener, Runnable
       g.setColor(Color.WHITE);
       g.drawString(turnQueue.getTurnName(), 16, viewHeight - 160);
 
+      
+      // Display level up window
+      if(paused)
+      {
+         characterMenu.draw(player, g, fm);
+      }
+      
+      // Display a game over screen
       if(player.getCurrentHealth() <= 0)
       {
          if(allowAnimate)
@@ -738,8 +698,12 @@ public class Viewport extends JPanel implements ActionListener, Runnable
          g.drawString("Game Over...", viewWidth/2 - fm.stringWidth("Game Over...") + 2, viewHeight/2 - fm.getHeight());
          g.drawString("Game Over...", viewWidth/2 - fm.stringWidth("Game Over..."), viewHeight/2 - fm.getHeight() + 2);
          
+         g.drawString("You defeated " + enemiesDefeated + " enemies.", viewWidth/2 - fm.stringWidth("You defeated " + enemiesDefeated + " enemies.") + 2, viewHeight/2 - fm.getHeight() + 32);
+         g.drawString("You defeated " + enemiesDefeated + " enemies.", viewWidth/2 - fm.stringWidth("You defeated " + enemiesDefeated + " enemies."), viewHeight/2 - fm.getHeight() + 2 + 32);
+         
          g.setColor(Color.WHITE);
          g.drawString("Game Over...", viewWidth/2 - fm.stringWidth("Game Over..."), viewHeight/2 - fm.getHeight());
+         g.drawString("You defeated " + enemiesDefeated + " enemies.", viewWidth/2 - fm.stringWidth("You defeated " + enemiesDefeated + " enemies."), viewHeight/2 - fm.getHeight() + 32);
          turnQueue.clearTurns();
       }
 
@@ -762,6 +726,16 @@ public class Viewport extends JPanel implements ActionListener, Runnable
    public void run()
    {
       // TODO Auto-generated method stub
+   }
+   
+   public static void togglePause()
+   {
+      paused = !paused;
+   }
+
+   public static boolean isPaused()
+   {
+      return paused;
    }
 
 }

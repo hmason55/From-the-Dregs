@@ -12,6 +12,7 @@ public class TurnQueue implements Runnable
       turns = new ArrayList<Turn>();
    }
 
+   // Initialize the queue and start a thread
    public void start()
    {
       if (turns == null)
@@ -29,19 +30,15 @@ public class TurnQueue implements Runnable
          thread = new Thread(this);
          thread.start();
       }
-
    }
-
-   public void completePlayerTurn()
-   {
-
-   }
-
+   
+   // Add a turn to the queue
    public void addTurn(Turn t)
    {
       turns.add(t);
    }
 
+   // Remove all turn instances of Unit u from the queue
    public void removeTurns(Unit u)
    {
       if (turns == null)
@@ -56,7 +53,6 @@ public class TurnQueue implements Runnable
             Turn turn = turns.get(i);
             if (turn != null)
             {
-               // System.out.println(turn.toString());
                if(turn.getUnit() != null) {
                   if (turn.getUnit().equals(u))
                   {
@@ -69,15 +65,16 @@ public class TurnQueue implements Runnable
       }
    }
 
+   // Clean up the queue and move it forward
    public void nextTurn()
    {
-      // remove first element
       if (turns.size() > 0)
       {
-
          for (int i = turns.size() - 1; i >= 0; i--)
          {
             Turn turn = turns.get(i);
+            
+            // Remove any null instances of turns from the queue
             if (turn == null)
             {
                System.out.println("removing null turn at index " + i);
@@ -88,27 +85,20 @@ public class TurnQueue implements Runnable
                turns.remove(i);
             } else
             {
+               // Older turns will have decreased priority and will eventually be moved to the front of the queue
                turn.decreasePriority();
             }
-
          }
 
          sortTurns();
-
-         //System.out.println("\nNext turn:");
-         for (Turn turn : turns)
-         {
-            //System.out.println(turn.toString());
-         }
-
          if (turns.size() > 0)
          {
             turns.get(0).getUnit().beginTurn();
          }
-
       }
    }
 
+   // Remove the first turn in the queue because it will be completed
    public void endTurn()
    {
       if (turns != null)
@@ -123,7 +113,7 @@ public class TurnQueue implements Runnable
    // Sorts turns
    private void sortTurns()
    {
-      // insertion sort ascending
+      // Insertion sort based on turn priority (ascending)
       if (turns == null)
       {
          return;
@@ -153,42 +143,38 @@ public class TurnQueue implements Runnable
       {
          while (turns.size() > 0)
          {
-            if (turns.get(0) == null)
+            if(!Viewport.paused)
             {
-               nextTurn();
-            } else if (turns.get(0).getUnit() == null)
-            {
-               nextTurn();
-            } else if (!turns.get(0).getUnit().isMyTurn())
-            {
-               nextTurn();
-            } else
-            {
-               // do ai turn stuff
-               Thread.sleep(50);
-               
-               
-               Unit u = turns.get(0).getUnit();
-               if(u != null)
+               if (turns.get(0) == null)
                {
-                  if(u.isPlayerControlled())
+                  nextTurn();
+               } else if (turns.get(0).getUnit() == null)
+               {
+                  nextTurn();
+               } else if (!turns.get(0).getUnit().isMyTurn())
+               {
+                  nextTurn();
+               } else
+               {
+                  Thread.sleep(50);
+                  
+                  Unit u = turns.get(0).getUnit();
+                  if(u != null)
                   {
-                     // Wait for player input
-                  } else {
-
-                     u.aiTurn();
-                     
+                     if(u.isPlayerControlled())
+                     {
+                        // Wait for player input
+                     } else {
+                        // Let the ai decide
+                        u.aiTurn();
+                     }
                   }
                }
-              
-
-               
             }
             Thread.sleep(50);
          }
       } catch (InterruptedException e)
       {
-         // TODO Auto-generated catch block
          e.printStackTrace();
       }
    }
